@@ -27,7 +27,7 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 
 	accessToken, refreshToken, err := h.userService.Authenticate(body.Username, body.Password)
 	if err != nil {
-		return helpers.ErrorResponse(c, fiber.StatusUnauthorized, "Invalid credentials")
+		return helpers.ErrorResponse(c, fiber.StatusBadRequest, "Invalid credentials")
 	}
 
 	return helpers.SuccessResponse(c,
