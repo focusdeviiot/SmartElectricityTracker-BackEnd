@@ -1,0 +1,8 @@
+DB:
+  SSLMode: disable
+  MaxOpenConns: 10
+  MaxIdleConns: 10
+  ConnMaxLifetime: 5m
+
+JWTExpiration : 1h
+RefreshTokenExpiration : 24h
