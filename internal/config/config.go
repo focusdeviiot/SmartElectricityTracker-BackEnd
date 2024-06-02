@@ -17,6 +17,10 @@ type Config struct {
 	PowerMeter struct {
 		Device string
 	}
+	AdminUser struct {
+		Username string
+		Password string
+	}
 	JWTSecret              string
 	JWTExpiration          time.Duration
 	RefreshTokenExpiration time.Duration

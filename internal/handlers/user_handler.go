@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"smart_electricity_tracker_backend/internal/config"
 	"smart_electricity_tracker_backend/internal/helpers"
 	"smart_electricity_tracker_backend/internal/services"
 
@@ -9,10 +10,11 @@ import (
 
 type UserHandler struct {
 	userService *services.UserService
+	cfg         *config.Config
 }
 
-func NewUserHandler(userService *services.UserService) *UserHandler {
-	return &UserHandler{userService: userService}
+func NewUserHandler(userService *services.UserService, cfg *config.Config) *UserHandler {
+	return &UserHandler{userService: userService, cfg: cfg}
 }
 
 func (h *UserHandler) Login(c *fiber.Ctx) error {
@@ -112,5 +114,129 @@ func (h *UserHandler) CheckToken(c *fiber.Ctx) error {
 		fiber.StatusOK,
 		"Token valid",
 		fiber.Map{},
+	)
+}
+
+func (h *UserHandler) GetUsers(c *fiber.Ctx) error {
+	users, err := h.userService.GetUsers()
+	if err != nil {
+		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get users")
+	}
+
+	return helpers.SuccessResponse(c,
+		fiber.StatusOK,
+		"Get users successful",
+		fiber.Map{
+			"users": users,
+		},
+	)
+}
+
+func (h *UserHandler) GetUser(c *fiber.Ctx) error {
+	id := c.Params("id")
+	user, err := h.userService.GetUserById(id)
+	if err != nil {
+		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get user")
+	}
+
+	return helpers.SuccessResponse(c,
+		fiber.StatusOK,
+		"Get user successful",
+		fiber.Map{
+			"user": user,
+		},
+	)
+}
+
+func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	usernameAdmin := h.cfg.AdminUser.Username
+	userAdmin, err := h.userService.GetUserByUsername(usernameAdmin)
+	if err != nil {
+		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get main userAdmin")
+	}
+
+	if id == userAdmin.ID.String() {
+		return helpers.ErrorResponse(c, fiber.StatusBadRequest, "Cannot update main userAdmin")
+	}
+
+	var body struct {
+		Password string `json:"password"`
+		Role     string `json:"role"`
+		Name     string `json:"name"`
+	}
+
+	if err := c.BodyParser(&body); err != nil {
+		return helpers.ErrorResponse(c, fiber.StatusBadRequest, "Cannot parse JSON")
+	}
+
+	if err := h.userService.UpdateUser(id, body.Password, body.Role, body.Name); err != nil {
+		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot update user")
+	}
+
+	return helpers.SuccessResponse(c,
+		fiber.StatusOK,
+		"Update user successful",
+		fiber.Map{},
+	)
+}
+
+func (h *UserHandler) DeleteUser(c *fiber.Ctx) error {
+	id := c.Params("id")
+	user_id := c.Locals("user_id").(string)
+	if id == user_id {
+		return helpers.ErrorResponse(c, fiber.StatusBadRequest, "Cannot delete own user")
+	}
+
+	usernameAdmin := h.cfg.AdminUser.Username
+	userAdmin, err := h.userService.GetUserByUsername(usernameAdmin)
+	if err != nil {
+		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get main userAdmin")
+	}
+
+	if id == userAdmin.ID.String() {
+		return helpers.ErrorResponse(c, fiber.StatusBadRequest, "Cannot delete main userAdmin")
+	}
+
+	if err := h.userService.DeleteUser(id); err != nil {
+		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot delete user")
+	}
+
+	return helpers.SuccessResponse(c,
+		fiber.StatusOK,
+		"Delete user successful",
+		fiber.Map{},
+	)
+}
+
+func (h *UserHandler) GetUserByUsername(c *fiber.Ctx) error {
+	username := c.Params("username")
+	user, err := h.userService.GetUserByUsername(username)
+	if err != nil {
+		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get user")
+	}
+
+	return helpers.SuccessResponse(c,
+		fiber.StatusOK,
+		"Get user successful",
+		fiber.Map{
+			"user": user,
+		},
+	)
+}
+
+func (h *UserHandler) GetUsersCountDevice(c *fiber.Ctx) error {
+	count, err := h.userService.GetUsersCountDevice()
+	if err != nil {
+		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get users count device")
+	}
+
+	return helpers.SuccessResponse(c,
+		fiber.StatusOK,
+		"Get users count device successful",
+		fiber.Map{
+			"count": count,
+		},
 	)
 }

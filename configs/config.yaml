@@ -6,3 +6,7 @@ DB:
 
 JWTExpiration : 1h
 RefreshTokenExpiration : 24h
+
+AdminUser:
+  Username: admin
+  Password: Kmutnb@Eng

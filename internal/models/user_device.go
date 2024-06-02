@@ -21,3 +21,12 @@ type UserDevice struct {
 	UpdatedAt     time.Time      `json:"updated_at" gorm:"index"`
 	DeletedAt     gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
+
+type UserCountDevice struct {
+	gorm.Model
+	UserID      string `json:"user_id" gorm:"unique;type:varchar(255);index:;not null;" `
+	Username    string `json:"username" gorm:"type:varchar(255);index:;not null;"`
+	Name        string `json:"name" gorm:"type:varchar(255);index:;not null;"`
+	Role        Role   `json:"role" gorm:"type:varchar(255);index:;not null;"`
+	DeviceCount uint   `json:"device_count" gorm:"index;not null;"`
+}

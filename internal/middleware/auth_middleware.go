@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"smart_electricity_tracker_backend/internal/config"
 	"smart_electricity_tracker_backend/internal/helpers"
 	"smart_electricity_tracker_backend/internal/models"
@@ -45,6 +44,8 @@ func (s *AuthMiddlewareService) Authenticate() fiber.Handler {
 
 		c.Locals("user_id", claims.UserID)
 		c.Locals("role", claims.Role)
+		c.Locals("username", claims.Username)
+		c.Locals("name", claims.Name)
 
 		return c.Next()
 	}
@@ -52,10 +53,10 @@ func (s *AuthMiddlewareService) Authenticate() fiber.Handler {
 
 func (s *AuthMiddlewareService) Permission(roleApprover []models.Role) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		role := c.Locals("role").(string)
+		role := c.Locals("role").(models.Role)
 
 		for _, roleApp := range roleApprover {
-			if role == fmt.Sprint(roleApp) {
+			if role == roleApp {
 				return c.Next()
 			}
 		}
