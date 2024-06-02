@@ -193,8 +193,8 @@ func (s *UserService) GetUserByUsername(username string) (*models.User, error) {
 	return s.repo.FindByUsername(username)
 }
 
-func (s *UserService) GetUsersCountDevice() ([]models.UserCountDevice, error) {
-	return s.repo.FindUsersCountDevice()
+func (s *UserService) GetUsersCountDevice(req *models.SearchUserCountDeviceListReq) ([]models.UserCountDeviceRes, *models.Pageable, error) {
+	return s.repo.FindUsersCountDevice(req)
 }
 
 func (s *UserService) GetUserCountDeviceById(id string) (*models.UserDevice, error) {

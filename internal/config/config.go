@@ -19,6 +19,7 @@ type Config struct {
 	}
 	AdminUser struct {
 		Username string
+		Name     string
 		Password string
 	}
 	JWTSecret              string

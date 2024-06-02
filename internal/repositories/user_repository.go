@@ -51,21 +51,64 @@ func (r *UserRepository) DeleteUser(user *models.User) error {
 	return r.db.Delete(user).Error
 }
 
-func (r *UserRepository) FindUsersCountDevice() ([]models.UserCountDevice, error) {
-	var users []models.UserCountDevice
-	if err := r.db.Table("users").Select("users.id as user_id, users.username, users.name, users.role, count(user_devices.id) as device_count").
-		Joins("left join user_devices on user_devices.user_id = users.id").
-		Group("users.id").
-		Scan(&users).Error; err != nil {
-		return nil, err
+func (r *UserRepository) FindUsersCountDevice(req *models.SearchUserCountDeviceListReq) ([]models.UserCountDeviceRes, *models.Pageable, error) {
+	var users []models.UserCountDeviceRes
+
+	pageable := &models.Pageable{}
+	query := r.db.Table("users as u")
+	query = query.Joins("left join user_devices ud2 on u.id = ud2.user_id")
+	query = query.Joins("left join (select ud_inner.user_id ,count(ud_inner.id) as count from user_devices ud_inner group by ud_inner.user_id) ud1 on ud1.user_id = u.id")
+
+	query = query.Where("u.deleted_at IS NULL")
+
+	if req.Username != "" {
+		query = query.Where("u.username ILIKE ?", "%"+req.Username+"%")
 	}
-	return users, nil
+
+	if req.Name != "" {
+		query = query.Where("u.name ILIKE ?", "%"+req.Name+"%")
+	}
+
+	if req.Role != "*" {
+		query = query.Where("u.role = ?", req.Role)
+	}
+
+	if req.DeviceId != "*" {
+		query = query.Where("ud2.device_id = ?", req.DeviceId)
+	}
+
+	queryCount := *query
+
+	var totalElements int64
+	err := queryCount.Select("count(distinct u.id)").Scan(&totalElements).Error
+	if err != nil {
+		return nil, pageable, err
+	}
+
+	query = query.Order("u.username ASC,u.name ASC, u.role ASC")
+
+	pageable.PageNumber = int(req.Pageable.PageNumber)
+	pageable.PageSize = int(req.Pageable.PageSize)
+	pageable.TotalElements = totalElements
+
+	if req.Pageable.PageSize > 0 {
+		pageable.TotalPages = int((totalElements + int64(req.Pageable.PageSize) - 1) / int64(req.Pageable.PageSize))
+		query = query.Offset(int((req.Pageable.PageNumber - 1) * req.Pageable.PageSize)).Limit(int(req.Pageable.PageSize))
+	} else {
+		pageable.TotalPages = 1
+	}
+
+	if err := query.Select("distinct u.id as user_id, u.username, u.name, u.role, ud1.count as device_count").
+		Scan(&users).Error; err != nil {
+		return nil, nil, err
+	}
+	return users, pageable, nil
 }
 
 func (r *UserRepository) FindUserCountDeviceById(userId uuid.UUID) (*models.UserDevice, error) {
-	var user models.UserDevice
+	var user *models.UserDevice
 	if err := r.db.Where("user_id = ?", userId).First(&user).Error; err != nil {
 		return nil, err
 	}
-	return &user, nil
+	return user, nil
 }

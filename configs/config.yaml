@@ -9,4 +9,5 @@ RefreshTokenExpiration : 24h
 
 AdminUser:
   Username: admin
+  Name: "Danuwat Baongoen"
   Password: Kmutnb@Eng

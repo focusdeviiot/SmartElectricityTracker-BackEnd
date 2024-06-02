@@ -70,7 +70,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	admin.Put("/users/:id", userHandler.UpdateUser)
 	admin.Delete("/users/:id", userHandler.DeleteUser)
 
-	admin.Get("/users-count-device", userHandler.GetUsersCountDevice)
+	admin.Post("/users-count-device", userHandler.GetUsersCountDevice)
 
 	// admin.Get("/user_device", userHandler.GetUserDevices)
 	// admin.Get("/user_device/:id", userHandler.GetUserDevice)

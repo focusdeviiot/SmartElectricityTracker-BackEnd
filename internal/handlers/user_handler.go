@@ -3,6 +3,7 @@ package handlers
 import (
 	"smart_electricity_tracker_backend/internal/config"
 	"smart_electricity_tracker_backend/internal/helpers"
+	"smart_electricity_tracker_backend/internal/models"
 	"smart_electricity_tracker_backend/internal/services"
 
 	"github.com/gofiber/fiber/v2"
@@ -227,7 +228,13 @@ func (h *UserHandler) GetUserByUsername(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) GetUsersCountDevice(c *fiber.Ctx) error {
-	count, err := h.userService.GetUsersCountDevice()
+	body := models.SearchUserCountDeviceListReq{}
+
+	if err := c.BodyParser(&body); err != nil {
+		return helpers.ErrorResponse(c, fiber.StatusBadRequest, "Cannot parse JSON")
+	}
+
+	userCount, pageable, err := h.userService.GetUsersCountDevice(&body)
 	if err != nil {
 		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get users count device")
 	}
@@ -236,7 +243,8 @@ func (h *UserHandler) GetUsersCountDevice(c *fiber.Ctx) error {
 		fiber.StatusOK,
 		"Get users count device successful",
 		fiber.Map{
-			"count": count,
+			"data_list": userCount,
+			"pageable":  pageable,
 		},
 	)
 }
