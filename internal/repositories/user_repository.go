@@ -53,8 +53,8 @@ func (r *UserRepository) DeleteUser(user *models.User) error {
 
 func buildUserCountDeviceQuery(db *gorm.DB, req *models.SearchUserCountDeviceListReq) *gorm.DB {
 	query := db.Table("users as u")
-	query = query.Joins("left join user_devices ud2 on u.id = ud2.user_id")
-	query = query.Joins("left join (select ud1.user_id, count(ud1.id) as count from user_devices ud1 group by ud1.user_id) ud1 on ud1.user_id = u.id")
+	query = query.Joins("left join user_devices ud2 on u.id = ud2.user_id and ud2.deleted_at IS NULL")
+	query = query.Joins("left join (select ud1.user_id, count(ud1.id) as count from user_devices ud1 where ud1.deleted_at IS NULL group by ud1.user_id) ud1 on ud1.user_id = u.id")
 	query = query.Where("u.deleted_at IS NULL")
 
 	if req.Username != "" {
@@ -76,7 +76,7 @@ func buildUserCountDeviceQuery(db *gorm.DB, req *models.SearchUserCountDeviceLis
 	return query
 }
 
-func (r *UserRepository) FindUsersCountDevice(req *models.SearchUserCountDeviceListReq) ([]models.UserCountDeviceRes, *models.Pageable, error) {
+func (r *UserRepository) FindAllUsersCountDevice(req *models.SearchUserCountDeviceListReq) ([]models.UserCountDeviceRes, *models.Pageable, error) {
 	var users []models.UserCountDeviceRes
 
 	pageable := &models.Pageable{}
@@ -110,10 +110,46 @@ func (r *UserRepository) FindUsersCountDevice(req *models.SearchUserCountDeviceL
 	return users, pageable, nil
 }
 
-func (r *UserRepository) FindUserCountDeviceById(userId uuid.UUID) (*models.UserDevice, error) {
-	var user *models.UserDevice
-	if err := r.db.Where("user_id = ?", userId).First(&user).Error; err != nil {
+func (r *UserRepository) FindUserDeviceById(userId uuid.UUID) ([]models.UserDeviceFromDB, error) {
+	var userDevice []models.UserDeviceFromDB
+	query := r.db.Table("user_devices as ud")
+	query = query.Where("deleted_at IS NULL")
+	query = query.Where("user_id = ?", userId)
+	query = query.Order("ud.device_id ASC")
+	query = query.Select("ud.user_id, ud.device_id")
+
+	if err := query.Scan(&userDevice).Error; err != nil {
 		return nil, err
 	}
-	return user, nil
+
+	return userDevice, nil
+}
+
+func (r *UserRepository) UpdateUserDevice(userId uuid.UUID, deviceIds []string) error {
+	// Delete all user devices
+	tx := r.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Where("user_id = ?", userId).Delete(&models.UserDevice{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Insert new user devices
+	for _, deviceId := range deviceIds {
+		userDevice := models.UserDevice{
+			UserID:   userId.String(),
+			DeviceID: deviceId,
+		}
+		if err := tx.Create(&userDevice).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit().Error
 }

@@ -227,14 +227,14 @@ func (h *UserHandler) GetUserByUsername(c *fiber.Ctx) error {
 	)
 }
 
-func (h *UserHandler) GetUsersCountDevice(c *fiber.Ctx) error {
+func (h *UserHandler) GetAllUsersCountDevice(c *fiber.Ctx) error {
 	body := models.SearchUserCountDeviceListReq{}
 
 	if err := c.BodyParser(&body); err != nil {
 		return helpers.ErrorResponse(c, fiber.StatusBadRequest, "Cannot parse JSON")
 	}
 
-	userCount, pageable, err := h.userService.GetUsersCountDevice(&body)
+	userCount, pageable, err := h.userService.GetAllUsersCountDevice(&body)
 	if err != nil {
 		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get users count device")
 	}
@@ -246,5 +246,42 @@ func (h *UserHandler) GetUsersCountDevice(c *fiber.Ctx) error {
 			"data_list": userCount,
 			"pageable":  pageable,
 		},
+	)
+}
+
+func (h *UserHandler) GetUserDeviceById(c *fiber.Ctx) error {
+	userID := c.Query("user_id")
+	userCount, err := h.userService.GetUserDeviceById(&userID)
+	if err != nil {
+		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get users count device by user id")
+	}
+
+	return helpers.SuccessResponse(c,
+		fiber.StatusOK,
+		"Get users count device by user id successful",
+		fiber.Map{
+			"data_list": userCount,
+		},
+	)
+}
+
+func (h *UserHandler) UpdateUserDevice(c *fiber.Ctx) error {
+	body := models.UpdateUserDeviceReq{}
+
+	if err := c.BodyParser(&body); err != nil {
+		return helpers.ErrorResponse(c, fiber.StatusBadRequest, "Cannot parse JSON")
+	}
+
+	if body.UserID == "" {
+		return helpers.ErrorResponse(c, fiber.StatusBadRequest, "User ID is required")
+	}
+	if err := h.userService.UpdateUserDevice(&body); err != nil {
+		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot update user device")
+	}
+
+	return helpers.SuccessResponse(c,
+		fiber.StatusOK,
+		"Update user device successful",
+		fiber.Map{},
 	)
 }
