@@ -23,7 +23,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = database.Migrate(db)
+	err = database.Migrate(db, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}

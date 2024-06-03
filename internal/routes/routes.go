@@ -5,6 +5,7 @@ import (
 	"smart_electricity_tracker_backend/internal/config"
 	"smart_electricity_tracker_backend/internal/handlers"
 	"smart_electricity_tracker_backend/internal/middleware"
+	"smart_electricity_tracker_backend/internal/models"
 	"smart_electricity_tracker_backend/internal/repositories"
 	"smart_electricity_tracker_backend/internal/services"
 
@@ -29,7 +30,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 
 	userService := services.NewUserService(userRepo, refreshTokenRepo, cfg.JWTSecret, cfg.JWTExpiration, cfg.RefreshTokenExpiration)
 
-	userHandler := handlers.NewUserHandler(userService)
+	userHandler := handlers.NewUserHandler(userService, cfg)
 
 	server.OnConnect("/", func(s socketio.Conn) error {
 		s.SetContext("")
@@ -60,13 +61,16 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	// data.Get("/power-meter", userHandler.GetPowerMeter)
 	// data.Get("/electricity-bill", userHandler.GetElectricityBill)
 
-	// // Admin
-	// admin := api.Group("/admin", authMiddleware.Authenticate(), authMiddleware.Permission([]models.Role{models.ADMIN}))
-	// admin.Get("/users", userHandler.GetUsers)
-	// admin.Get("/users/:id", userHandler.GetUser)
-	// admin.Post("/users", userHandler.Register)
-	// admin.Put("/users/:id", userHandler.UpdateUser)
-	// admin.Delete("/users/:id", userHandler.DeleteUser)
+	// Admin
+	admin := api.Group("/admin", authMiddleware.Authenticate(), authMiddleware.Permission([]models.Role{models.ADMIN}))
+	admin.Get("/users", userHandler.GetUsers)
+	admin.Get("/users/:id", userHandler.GetUser)
+	admin.Get("/users/:username", userHandler.GetUserByUsername)
+	admin.Post("/users", userHandler.Register)
+	admin.Put("/users/:id", userHandler.UpdateUser)
+	admin.Delete("/users/:id", userHandler.DeleteUser)
+
+	admin.Post("/users-count-device", userHandler.GetUsersCountDevice)
 
 	// admin.Get("/user_device", userHandler.GetUserDevices)
 	// admin.Get("/user_device/:id", userHandler.GetUserDevice)

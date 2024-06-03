@@ -5,30 +5,48 @@ import (
 	"smart_electricity_tracker_backend/internal/config"
 	"smart_electricity_tracker_backend/internal/models"
 
+	"github.com/gofiber/fiber/v2/log"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func Connect(cfg *config.Config) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		cfg.Database.Host, cfg.Database.Port, cfg.Database.User, cfg.Database.Password, cfg.Database.Dbname)
-	return gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	return gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
 }
 
-func Migrate(db *gorm.DB) error {
-	// err := CreateUuidOssp(db)
-	// if err != nil {
-	// 	return err
-	// }
+func Migrate(db *gorm.DB, cfg *config.Config) error {
 	err := CreateUserRoleEnumIfNotExists(db)
 	if err != nil {
 		return err
 	}
 
-	return db.AutoMigrate(
+	err = db.AutoMigrate(
 		&models.User{},
 		&models.RefreshToken{},
+		&models.DeviceMaster{},
+		&models.UserDevice{},
 	)
+	if err != nil {
+		return err
+	}
+
+	err = CreateAdminUser(db, cfg)
+	if err != nil {
+		log.Errorf("failed to create admin user: %v", err)
+	}
+
+	err = CreateDeviceMaster(db)
+	if err != nil {
+		log.Errorf("failed to create device master: %v", err)
+	}
+
+	return nil
 }
 
 func CreateUserRoleEnumIfNotExists(db *gorm.DB) error {
@@ -44,10 +62,31 @@ func CreateUserRoleEnumIfNotExists(db *gorm.DB) error {
 	return nil
 }
 
-func CreateUuidOssp(db *gorm.DB) error {
-	err := db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
+func DropAllTables(db *gorm.DB) error {
+	return db.Migrator().DropTable(
+		&models.User{},
+		&models.RefreshToken{},
+		&models.DeviceMaster{},
+		&models.UserDevice{},
+	)
+}
+
+func CreateAdminUser(db *gorm.DB, cfg *config.Config) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cfg.AdminUser.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return fmt.Errorf("failed to create extension uuid-ossp: %v", err)
+		return err
 	}
-	return nil
+
+	admin := models.User{
+		Username: cfg.AdminUser.Username,
+		Name:     cfg.AdminUser.Name,
+		Password: string(hashedPassword),
+		Role:     models.ADMIN,
+	}
+	return db.Create(&admin).Error
+}
+
+func CreateDeviceMaster(db *gorm.DB) error {
+	device := []models.DeviceMaster{{ID: "DEVICE-01", Name: "DEVICE-01"}, {ID: "DEVICE-02", Name: "DEVICE-02"}, {ID: "DEVICE-03", Name: "DEVICE-03"}}
+	return db.Create(&device).Error
 }
