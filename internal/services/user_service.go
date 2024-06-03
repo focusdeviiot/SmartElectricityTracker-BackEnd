@@ -193,14 +193,23 @@ func (s *UserService) GetUserByUsername(username string) (*models.User, error) {
 	return s.repo.FindByUsername(username)
 }
 
-func (s *UserService) GetUsersCountDevice(req *models.SearchUserCountDeviceListReq) ([]models.UserCountDeviceRes, *models.Pageable, error) {
-	return s.repo.FindUsersCountDevice(req)
+func (s *UserService) GetAllUsersCountDevice(req *models.SearchUserCountDeviceListReq) ([]models.UserCountDeviceRes, *models.Pageable, error) {
+	return s.repo.FindAllUsersCountDevice(req)
 }
 
-func (s *UserService) GetUserCountDeviceById(id string) (*models.UserDevice, error) {
-	userId, err := uuid.Parse(id)
+func (s *UserService) GetUserDeviceById(id *string) ([]models.UserDeviceFromDB, error) {
+	userId, err := uuid.Parse(*id)
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.FindUserCountDeviceById(userId)
+	return s.repo.FindUserDeviceById(userId)
+}
+
+func (s *UserService) UpdateUserDevice(req *models.UpdateUserDeviceReq) error {
+	userId, err := uuid.Parse(req.UserID)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.UpdateUserDevice(userId, req.DeviceID)
 }

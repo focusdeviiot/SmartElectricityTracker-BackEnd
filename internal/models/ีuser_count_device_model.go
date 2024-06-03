@@ -16,11 +16,6 @@ type SearchUserCountDeviceListReq struct {
 	Pageable *Pageable `json:"pageable"`
 }
 
-type SearchCountDeviceListRes struct {
-	SanctionList []UserCountDeviceRes `json:"sanction_list"`
-	Pageable     *Pageable            `json:"pageable"`
-}
-
 type SearchUserCountDeviceListTest struct {
 	Username *string `json:"username"`
 	Name     *string `json:"name"`
