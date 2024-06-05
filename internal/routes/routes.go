@@ -28,7 +28,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	userRepo := repositories.NewUserRepository(db)
 	refreshTokenRepo := repositories.NewRefreshTokenRepository(db)
 
-	userService := services.NewUserService(userRepo, refreshTokenRepo, cfg.JWTSecret, cfg.JWTExpiration, cfg.RefreshTokenExpiration)
+	userService := services.NewUserService(userRepo, refreshTokenRepo, cfg.JWTSecret, cfg.JWTExpiration, cfg.RefreshTokenExpiration, cfg)
 
 	userHandler := handlers.NewUserHandler(userService, cfg)
 
@@ -64,11 +64,12 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	// Admin
 	admin := api.Group("/admin", authMiddleware.Authenticate(), authMiddleware.Permission([]models.Role{models.ADMIN}))
 	admin.Get("/users", userHandler.GetUsers)
-	admin.Get("/users/:id", userHandler.GetUser)
-	admin.Get("/users/:username", userHandler.GetUserByUsername)
-	admin.Post("/users", userHandler.Register)
-	admin.Put("/users/:id", userHandler.UpdateUser)
-	admin.Delete("/users/:id", userHandler.DeleteUser)
+
+	admin.Get("/user", userHandler.GetUser)
+	admin.Post("/user", userHandler.Register)
+	admin.Put("/user", userHandler.UpdateUser)
+	admin.Delete("/user", userHandler.DeleteUser)
+	// admin.Get("/user/:username", userHandler.GetUserByUsername)
 
 	admin.Post("/users-count-device", userHandler.GetAllUsersCountDevice)
 	admin.Get("/users-device", userHandler.GetUserDeviceById)
