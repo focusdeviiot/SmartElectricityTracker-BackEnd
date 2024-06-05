@@ -25,6 +25,32 @@ type Config struct {
 	JWTSecret              string
 	JWTExpiration          time.Duration
 	RefreshTokenExpiration time.Duration
+	Devices                struct {
+		USB               string
+		BaudRate          int
+		DataBits          int
+		StopBits          int
+		Parity            string
+		TimeOut           time.Duration
+		LoopReadTime      time.Duration
+		LoopbroadcastTime time.Duration
+		LoopRecordTime    time.Duration
+		DEVICE01          struct {
+			SlaveId  int
+			DeviceId string
+			Name     string
+		}
+		DEVICE02 struct {
+			SlaveId  int
+			DeviceId string
+			Name     string
+		}
+		DEVICE03 struct {
+			SlaveId  int
+			DeviceId string
+			Name     string
+		}
+	}
 }
 
 func LoadConfig() (*Config, error) {

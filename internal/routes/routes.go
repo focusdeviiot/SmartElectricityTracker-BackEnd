@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"log"
 	"smart_electricity_tracker_backend/internal/config"
 	"smart_electricity_tracker_backend/internal/handlers"
 	"smart_electricity_tracker_backend/internal/middleware"
@@ -10,6 +9,7 @@ import (
 	"smart_electricity_tracker_backend/internal/services"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	socketio "github.com/googollee/go-socket.io"
 	"gorm.io/gorm"
 )
@@ -17,14 +17,18 @@ import (
 func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	server := socketio.NewServer(nil)
 	authMiddleware := middleware.NewAuthMiddleware(cfg)
-	// powerMeterService, err := services.NewPowerMeterService(cfg, server,usageRepo)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
 
-	// go powerMeterService.ReadAndStorePowerData()
+	log.Info("Starting power meter service")
+	powerMeterService, err := services.NewPowerMeterService(cfg) //server,usageRepo)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Info("Reading and storing power data")
+	go powerMeterService.ReadAndStorePowerData()
 
 	// dependencies
+	log.Info("Setting up routes")
 	userRepo := repositories.NewUserRepository(db)
 	refreshTokenRepo := repositories.NewRefreshTokenRepository(db)
 
@@ -34,16 +38,16 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 
 	server.OnConnect("/", func(s socketio.Conn) error {
 		s.SetContext("")
-		log.Println("connected:", s.ID())
+		log.Infof("connected:", s.ID())
 		return nil
 	})
 
 	server.OnError("/", func(s socketio.Conn, e error) {
-		log.Println("meet error:", e)
+		log.Infof("meet error:", e)
 	})
 
 	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
-		log.Println("closed", reason)
+		log.Infof("closed", reason)
 	})
 	go server.Serve()
 	defer server.Close()

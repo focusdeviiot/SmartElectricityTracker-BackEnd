@@ -11,3 +11,26 @@ AdminUser:
   Username: admin
   Name: "Danuwat Baongoen"
   Password: Kmutnb@Eng
+
+Devices:
+  USB: COM7 # /dev/ttyUSB0
+  BaudRate: 2400
+  DataBits: 8
+  StopBits: 1
+  Parity: "N"
+  Timeout: 1
+  LoopReadTime: 1
+  LoopbroadcastTime: 2
+  LoopRecordTime: 5
+  DEVICE01: 
+    SlaveId: 227
+    DeviceId: "DEVICE-01"
+    Name: "Device 01"
+  DEVICE02: 
+    SlaveId: 1
+    DeviceId: "DEVICE-02"
+    Name: "Device 02"
+  DEVICE03: 
+    SlaveId: 2
+    DeviceId: "DEVICE-03"
+    Name: "Device 03"
