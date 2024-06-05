@@ -50,9 +50,9 @@ func (p *PowerMeterService) ReadAndStorePowerData() { //(broadcastFunc func(data
 		}
 
 		values := parseRegisters(results)
-		logf.Infof("Voltage: %f\n", values[0])
-		logf.Infof("Current: %f\n", values[1])
-		logf.Infof("Active power: %f\n", values[2])
+		logf.Infof("Voltage: %f\n", math.Abs(float64(values[0])))
+		logf.Infof("Current: %f\n", math.Abs(float64(values[1])))
+		logf.Infof("Active power: %f\n", math.Abs(float64(values[2])))
 
 		time.Sleep(1 * time.Second)
 	}
