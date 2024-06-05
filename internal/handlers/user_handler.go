@@ -196,7 +196,7 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) DeleteUser(c *fiber.Ctx) error {
-	id := c.Params("id")
+	id := c.Query("user_id")
 	user_id := c.Locals("user_id").(string)
 	if id == user_id {
 		return helpers.ErrorResponse(c, fiber.StatusBadRequest, "Cannot delete own user")
