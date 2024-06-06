@@ -2,6 +2,7 @@ package routes
 
 import (
 	"smart_electricity_tracker_backend/internal/config"
+	"smart_electricity_tracker_backend/internal/external"
 	"smart_electricity_tracker_backend/internal/handlers"
 	"smart_electricity_tracker_backend/internal/middleware"
 	"smart_electricity_tracker_backend/internal/models"
@@ -11,16 +12,14 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 
-	// socketio "github.com/googollee/go-socket.io"
 	"gorm.io/gorm"
 )
 
 func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
-	// server := socketio.NewServer(nil)
 	authMiddleware := middleware.NewAuthMiddleware(cfg)
 
 	// dependencies
-	log.Info("Setting up routes")
+	log.Info("Setting up dependencie")
 	userRepo := repositories.NewUserRepository(db)
 	refreshTokenRepo := repositories.NewRefreshTokenRepository(db)
 	reportRepo := repositories.NewReportRepository(db)
@@ -31,25 +30,10 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	userHandler := handlers.NewUserHandler(userService, cfg)
 	reportHandler := handlers.NewReportHandler(reportService, cfg)
 
-	// log.Info("Starting socket.io server")
-	// server.OnConnect("/", func(s socketio.Conn) error {
-	// 	s.SetContext("")
-	// 	log.Infof("connected:", s.ID())
-	// 	return nil
-	// })
-
-	// server.OnError("/", func(s socketio.Conn, e error) {
-	// 	log.Infof("meet error:", e)
-	// })
-
-	// server.OnDisconnect("/", func(s socketio.Conn, reason string) {
-	// 	log.Infof("closed", reason)
-	// })
-	// go server.Serve()
-	// defer server.Close()
+	wsHandler := external.NewWebSocketHandler()
 
 	log.Info("Starting power meter service")
-	powerMeterService, err := services.NewPowerMeterService(cfg, reportRepo)
+	powerMeterService, err := services.NewPowerMeterService(cfg, reportRepo, wsHandler)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -60,8 +44,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	go powerMeterService.Broadcast()
 	go powerMeterService.RecordData()
 
-	// Goroutine ที่ 2: อ่านค่าจาก sharedData ทุกๆ 2 วินาที
-
+	log.Info("Setting up routes")
 	api := app.Group("/api")
 	// Authentication
 	api.Post("/login", userHandler.Login)
@@ -86,14 +69,4 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	admin.Post("/users-count-device", userHandler.GetAllUsersCountDevice)
 	admin.Get("/users-device", userHandler.GetUserDeviceById)
 	admin.Put("/users-device", userHandler.UpdateUserDevice)
-
-	// admin.Get("/user_device", userHandler.GetUserDevices)
-	// admin.Get("/user_device/:id", userHandler.GetUserDevice)
-	// admin.Post("/user_device", userHandler.CreateUserDevice)
-	// admin.Put("/user_device/:id", userHandler.UpdateUserDevice)
-	// admin.Delete("/user_device/:id", userHandler.DeleteUserDevice)
-
-	// admin.Get("/electricity-cost", userHandler.GetElectricityCost)
-	// admin.Get("/electricity-cost/:id", userHandler.GetElectricityCost)
-	// admin.Put("/electricity-cost/:id", userHandler.UpdateElectricityCost)
 }

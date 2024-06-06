@@ -4,13 +4,11 @@ import (
 	"smart_electricity_tracker_backend/internal/config"
 	"smart_electricity_tracker_backend/internal/models"
 	"smart_electricity_tracker_backend/internal/repositories"
-	"sync"
 	"time"
 )
 
 type ReportService struct {
 	reportRepo *repositories.ReportRepository
-	mu         *sync.Mutex
 	cfg        *config.Config
 }
 
@@ -31,8 +29,4 @@ func (s *ReportService) GetReportByDeviceAndDate(device_id *string, dateFrom *st
 		return nil, err
 	}
 	return s.reportRepo.FindReportByDeviceAndDate(device_id, &dateFromSet, &dateToSet)
-}
-
-func (s *ReportService) RecordPowermeter(report *models.RecodePowermeter) error {
-	return s.reportRepo.RecordPowermeter(report)
 }

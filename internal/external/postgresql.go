@@ -1,4 +1,4 @@
-package database
+package external
 
 import (
 	"fmt"

@@ -2,8 +2,10 @@ package services
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"math"
 	"smart_electricity_tracker_backend/internal/config"
+	"smart_electricity_tracker_backend/internal/external"
 	"smart_electricity_tracker_backend/internal/models"
 	"smart_electricity_tracker_backend/internal/repositories"
 	"sync"
@@ -18,10 +20,11 @@ type PowerMeterService struct {
 	mu         *sync.Mutex
 	sharedData map[string]map[string]float32
 	reportRepo *repositories.ReportRepository
+	ws         *external.WebSocketHandler
 	cfg        *config.Config
 }
 
-func NewPowerMeterService(cfg *config.Config, reportRepo *repositories.ReportRepository) (*PowerMeterService, error) {
+func NewPowerMeterService(cfg *config.Config, reportRepo *repositories.ReportRepository, ws *external.WebSocketHandler) (*PowerMeterService, error) {
 	handler := modbus.NewRTUClientHandler(cfg.Devices.USB)
 	handler.BaudRate = cfg.Devices.BaudRate
 	handler.DataBits = cfg.Devices.DataBits
@@ -42,6 +45,7 @@ func NewPowerMeterService(cfg *config.Config, reportRepo *repositories.ReportRep
 		mu:         &sync.Mutex{},
 		sharedData: make(map[string]map[string]float32),
 		reportRepo: reportRepo,
+		ws:         ws,
 		cfg:        cfg,
 	}, nil
 }
@@ -80,7 +84,15 @@ func (p *PowerMeterService) Broadcast() {
 		p.mu.Lock()
 		data := p.sharedData
 		p.mu.Unlock()
-		log.Info("Goroutine 2: Read value: %f\n", data)
+		log.Infof("Broadcasting data: %v\n", data)
+
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			log.Errorf("Error marshaling data: %v\n", err)
+			continue
+		}
+
+		p.ws.Broadcast(jsonData)
 	}
 }
 
