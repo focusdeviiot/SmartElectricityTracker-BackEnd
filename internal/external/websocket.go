@@ -83,6 +83,9 @@ func (w *WebSocketHandler) Start() {
 		w.mu.Lock()
 		for _, client := range w.clients {
 			data := w.filterDataForDevices(msg, client.userID)
+			if data == nil {
+				continue
+			}
 			jsonData, err := json.Marshal(data)
 			if err != nil {
 				log.Println("Error marshaling data:", err)
