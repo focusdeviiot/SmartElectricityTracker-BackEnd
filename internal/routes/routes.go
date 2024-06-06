@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"log"
 	"smart_electricity_tracker_backend/internal/config"
+	"smart_electricity_tracker_backend/internal/external"
 	"smart_electricity_tracker_backend/internal/handlers"
 	"smart_electricity_tracker_backend/internal/middleware"
 	"smart_electricity_tracker_backend/internal/models"
@@ -10,44 +10,43 @@ import (
 	"smart_electricity_tracker_backend/internal/services"
 
 	"github.com/gofiber/fiber/v2"
-	socketio "github.com/googollee/go-socket.io"
+	"github.com/gofiber/fiber/v2/log"
+	"github.com/gofiber/websocket/v2"
+
 	"gorm.io/gorm"
 )
 
 func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
-	server := socketio.NewServer(nil)
 	authMiddleware := middleware.NewAuthMiddleware(cfg)
-	// powerMeterService, err := services.NewPowerMeterService(cfg, server,usageRepo)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// go powerMeterService.ReadAndStorePowerData()
 
 	// dependencies
+	log.Info("Setting up dependencie")
 	userRepo := repositories.NewUserRepository(db)
 	refreshTokenRepo := repositories.NewRefreshTokenRepository(db)
+	reportRepo := repositories.NewReportRepository(db)
 
-	userService := services.NewUserService(userRepo, refreshTokenRepo, cfg.JWTSecret, cfg.JWTExpiration, cfg.RefreshTokenExpiration)
+	userService := services.NewUserService(userRepo, refreshTokenRepo, cfg.JWTSecret, cfg.JWTExpiration, cfg.RefreshTokenExpiration, cfg)
+	reportService := services.NewReportService(reportRepo, cfg)
 
 	userHandler := handlers.NewUserHandler(userService, cfg)
+	reportHandler := handlers.NewReportHandler(reportService, cfg)
 
-	server.OnConnect("/", func(s socketio.Conn) error {
-		s.SetContext("")
-		log.Println("connected:", s.ID())
-		return nil
-	})
+	wsHandler := external.NewWebSocketHandler(userRepo, cfg)
 
-	server.OnError("/", func(s socketio.Conn, e error) {
-		log.Println("meet error:", e)
-	})
+	log.Info("Starting power meter service")
+	powerMeterService, err := services.NewPowerMeterService(cfg, reportRepo, wsHandler)
+	if err != nil {
+		log.Fatal(err)
+	}
+	go wsHandler.Start()
 
-	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
-		log.Println("closed", reason)
-	})
-	go server.Serve()
-	defer server.Close()
+	log.Info("Reading and storing power data")
+	// mu := &sync.Mutex{}
+	go powerMeterService.ReadAndStorePowerData()
+	go powerMeterService.Broadcast()
+	go powerMeterService.RecordData()
 
+	log.Info("Setting up routes")
 	api := app.Group("/api")
 	// Authentication
 	api.Post("/login", userHandler.Login)
@@ -56,31 +55,23 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	api.Get("/check-token", authMiddleware.Authenticate(), userHandler.CheckToken)
 	// api.Post("/register", userHandler.Register)
 
-	// // Electricity Bill
-	// data := api.Group("/data", authMiddleware.Authenticate(), authMiddleware.Permission([]models.Role{models.USER, models.ADMIN}))
-	// data.Get("/power-meter", userHandler.GetPowerMeter)
-	// data.Get("/electricity-bill", userHandler.GetElectricityBill)
+	// Report
+	api.Post("/report", reportHandler.GetReport)
 
 	// Admin
 	admin := api.Group("/admin", authMiddleware.Authenticate(), authMiddleware.Permission([]models.Role{models.ADMIN}))
 	admin.Get("/users", userHandler.GetUsers)
-	admin.Get("/users/:id", userHandler.GetUser)
-	admin.Get("/users/:username", userHandler.GetUserByUsername)
-	admin.Post("/users", userHandler.Register)
-	admin.Put("/users/:id", userHandler.UpdateUser)
-	admin.Delete("/users/:id", userHandler.DeleteUser)
+
+	admin.Get("/user", userHandler.GetUser)
+	admin.Post("/user", userHandler.Register)
+	admin.Put("/user", userHandler.UpdateUser)
+	admin.Delete("/user", userHandler.DeleteUser)
+	// admin.Get("/user/:username", userHandler.GetUserByUsername)
 
 	admin.Post("/users-count-device", userHandler.GetAllUsersCountDevice)
 	admin.Get("/users-device", userHandler.GetUserDeviceById)
 	admin.Put("/users-device", userHandler.UpdateUserDevice)
 
-	// admin.Get("/user_device", userHandler.GetUserDevices)
-	// admin.Get("/user_device/:id", userHandler.GetUserDevice)
-	// admin.Post("/user_device", userHandler.CreateUserDevice)
-	// admin.Put("/user_device/:id", userHandler.UpdateUserDevice)
-	// admin.Delete("/user_device/:id", userHandler.DeleteUserDevice)
-
-	// admin.Get("/electricity-cost", userHandler.GetElectricityCost)
-	// admin.Get("/electricity-cost/:id", userHandler.GetElectricityCost)
-	// admin.Put("/electricity-cost/:id", userHandler.UpdateElectricityCost)
+	// WebSocket endpoint
+	app.Get("/ws", websocket.New(wsHandler.HandleWebSocket))
 }

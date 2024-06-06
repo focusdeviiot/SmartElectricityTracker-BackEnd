@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 	"smart_electricity_tracker_backend/internal/config"
-	"smart_electricity_tracker_backend/internal/database"
+	"smart_electricity_tracker_backend/internal/external"
 	"smart_electricity_tracker_backend/internal/routes"
 	"strings"
 
@@ -18,12 +18,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db, err := database.Connect(cfg)
+	db, err := external.Connect(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = database.Migrate(db, cfg)
+	err = external.Migrate(db, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -1,4 +1,4 @@
-package database
+package external
 
 import (
 	"fmt"
@@ -30,6 +30,7 @@ func Migrate(db *gorm.DB, cfg *config.Config) error {
 		&models.User{},
 		&models.RefreshToken{},
 		&models.DeviceMaster{},
+		&models.RecodePowermeter{},
 		&models.UserDevice{},
 	)
 	if err != nil {
@@ -41,7 +42,7 @@ func Migrate(db *gorm.DB, cfg *config.Config) error {
 		log.Errorf("failed to create admin user: %v", err)
 	}
 
-	err = CreateDeviceMaster(db)
+	err = CreateDeviceMaster(db, cfg)
 	if err != nil {
 		log.Errorf("failed to create device master: %v", err)
 	}
@@ -86,7 +87,11 @@ func CreateAdminUser(db *gorm.DB, cfg *config.Config) error {
 	return db.Create(&admin).Error
 }
 
-func CreateDeviceMaster(db *gorm.DB) error {
-	device := []models.DeviceMaster{{ID: "DEVICE-01", Name: "DEVICE-01"}, {ID: "DEVICE-02", Name: "DEVICE-02"}, {ID: "DEVICE-03", Name: "DEVICE-03"}}
+func CreateDeviceMaster(db *gorm.DB, cfg *config.Config) error {
+	device := []models.DeviceMaster{
+		{ID: cfg.Devices.DEVICE01.DeviceId, Name: cfg.Devices.DEVICE01.Name},
+		{ID: cfg.Devices.DEVICE02.DeviceId, Name: cfg.Devices.DEVICE02.Name},
+		{ID: cfg.Devices.DEVICE03.DeviceId, Name: cfg.Devices.DEVICE03.Name},
+	}
 	return db.Create(&device).Error
 }

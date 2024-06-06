@@ -134,10 +134,22 @@ func (h *UserHandler) GetUsers(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) GetUser(c *fiber.Ctx) error {
-	id := c.Params("id")
-	user, err := h.userService.GetUserById(id)
-	if err != nil {
-		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get user")
+	id := c.Query("user_id")
+	username := c.Query("username")
+
+	var user *models.GetUserRes
+	var err error // Declare err variable outside of if statements
+
+	if id != "" {
+		user, err = h.userService.GetUserById(id) // Assign the result to the existing user variable
+		if err != nil {
+			return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get user")
+		}
+	} else if username != "" {
+		user, err = h.userService.GetUserByUsername(username) // Assign the result to the existing user variable
+		if err != nil {
+			return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get user")
+		}
 	}
 
 	return helpers.SuccessResponse(c,
@@ -150,19 +162,9 @@ func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
-	id := c.Params("id")
-
-	usernameAdmin := h.cfg.AdminUser.Username
-	userAdmin, err := h.userService.GetUserByUsername(usernameAdmin)
-	if err != nil {
-		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get main userAdmin")
-	}
-
-	if id == userAdmin.ID.String() {
-		return helpers.ErrorResponse(c, fiber.StatusBadRequest, "Cannot update main userAdmin")
-	}
-
 	var body struct {
+		UserID   string `json:"user_id"`
+		Username string `json:"username"`
 		Password string `json:"password"`
 		Role     string `json:"role"`
 		Name     string `json:"name"`
@@ -172,7 +174,17 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 		return helpers.ErrorResponse(c, fiber.StatusBadRequest, "Cannot parse JSON")
 	}
 
-	if err := h.userService.UpdateUser(id, body.Password, body.Role, body.Name); err != nil {
+	usernameAdmin := h.cfg.AdminUser.Username
+	userAdmin, err := h.userService.GetUserByUsername(usernameAdmin)
+	if err != nil {
+		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get main userAdmin")
+	}
+
+	if body.UserID == userAdmin.UserID {
+		return helpers.ErrorResponse(c, fiber.StatusBadRequest, "Cannot update main userAdmin")
+	}
+
+	if err := h.userService.UpdateUser(body.UserID, body.Password, body.Role, body.Name); err != nil {
 		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot update user")
 	}
 
@@ -184,7 +196,7 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) DeleteUser(c *fiber.Ctx) error {
-	id := c.Params("id")
+	id := c.Query("user_id")
 	user_id := c.Locals("user_id").(string)
 	if id == user_id {
 		return helpers.ErrorResponse(c, fiber.StatusBadRequest, "Cannot delete own user")
@@ -196,7 +208,7 @@ func (h *UserHandler) DeleteUser(c *fiber.Ctx) error {
 		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get main userAdmin")
 	}
 
-	if id == userAdmin.ID.String() {
+	if id == userAdmin.UserID {
 		return helpers.ErrorResponse(c, fiber.StatusBadRequest, "Cannot delete main userAdmin")
 	}
 

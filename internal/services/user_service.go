@@ -1,6 +1,7 @@
 package services
 
 import (
+	"smart_electricity_tracker_backend/internal/config"
 	"smart_electricity_tracker_backend/internal/models"
 	"smart_electricity_tracker_backend/internal/repositories"
 	"time"
@@ -16,10 +17,11 @@ type UserService struct {
 	jwtSecret            string
 	accessTokenDuration  time.Duration
 	refreshTokenDuration time.Duration
+	cfg                  *config.Config
 }
 
-func NewUserService(repo *repositories.UserRepository, refreshTokenRepo *repositories.RefreshTokenRepository, jwtSecret string, accessTokenDuration time.Duration, refreshTokenDuration time.Duration) *UserService {
-	return &UserService{repo: repo, refreshTokenRepo: refreshTokenRepo, jwtSecret: jwtSecret, accessTokenDuration: accessTokenDuration, refreshTokenDuration: refreshTokenDuration}
+func NewUserService(repo *repositories.UserRepository, refreshTokenRepo *repositories.RefreshTokenRepository, jwtSecret string, accessTokenDuration time.Duration, refreshTokenDuration time.Duration, cfg *config.Config) *UserService {
+	return &UserService{repo: repo, refreshTokenRepo: refreshTokenRepo, jwtSecret: jwtSecret, accessTokenDuration: accessTokenDuration, refreshTokenDuration: refreshTokenDuration, cfg: cfg}
 }
 
 func (s *UserService) GenerateTokens(user *models.User) (string, string, error) {
@@ -133,12 +135,25 @@ func (s *UserService) GetUsers() ([]models.User, error) {
 	return users, nil
 }
 
-func (s *UserService) GetUserById(id string) (*models.User, error) {
+func (s *UserService) GetUserById(id string) (*models.GetUserRes, error) {
 	userId, err := uuid.Parse(id)
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.FindByUserId(userId)
+
+	userGet, err := s.repo.FindByUserId(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	userRes := &models.GetUserRes{
+		UserID:   userGet.ID.String(),
+		Username: userGet.Username,
+		Name:     userGet.Name,
+		Role:     userGet.Role,
+	}
+
+	return userRes, nil
 }
 
 func (s *UserService) UpdateUser(id string, password, role, name string) error {
@@ -189,8 +204,20 @@ func (s *UserService) DeleteUser(id string) error {
 	return s.repo.DeleteUser(user)
 }
 
-func (s *UserService) GetUserByUsername(username string) (*models.User, error) {
-	return s.repo.FindByUsername(username)
+func (s *UserService) GetUserByUsername(username string) (*models.GetUserRes, error) {
+	user, err := s.repo.FindByUsername(username)
+	if err != nil {
+		return nil, err
+	}
+
+	userRes := &models.GetUserRes{
+		UserID:   user.ID.String(),
+		Username: user.Username,
+		Name:     user.Name,
+		Role:     user.Role,
+	}
+
+	return userRes, nil
 }
 
 func (s *UserService) GetAllUsersCountDevice(req *models.SearchUserCountDeviceListReq) ([]models.UserCountDeviceRes, *models.Pageable, error) {

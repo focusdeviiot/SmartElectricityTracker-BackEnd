@@ -3,19 +3,18 @@ package models
 import (
 	"time"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type RecodePowermeter struct {
 	gorm.Model
-	ID        uuid.UUID      `json:"id" gorm:"type:uuid;default:gen_random_uuid();primary_key;index:;"`
+	ID        int64          `json:"id" gorm:"bigserial; primary_key;"`
 	DeviceID  string         `json:"device_id" gorm:"type:varchar(255);index:;not null;"`
 	Device    DeviceMaster   `json:"device" gorm:"foreignKey:DeviceID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	Volt      int            `json:"volt" gorm:"type:integer;index:;not null;"`
-	Ampere    int            `json:"ampere" gorm:"type:integer;index:;not null;"`
-	Watt      int            `json:"watt" gorm:"type:integer;index:;not null;"`
+	Volt      float32        `json:"volt" gorm:"type:REAL;"`
+	Ampere    float32        `json:"ampere" gorm:"type:REAL"`
+	Watt      float32        `json:"watt" gorm:"type:REAL;"`
 	CreatedAt time.Time      `json:"created_at" gorm:"index"`
-	UpdatedAt time.Time      `json:"updated_at" gorm:"index"`
-	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at"`
 }
