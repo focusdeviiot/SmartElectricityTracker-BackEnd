@@ -4,18 +4,24 @@ import (
 	"encoding/binary"
 	"math"
 	"smart_electricity_tracker_backend/internal/config"
+	"smart_electricity_tracker_backend/internal/models"
+	"smart_electricity_tracker_backend/internal/repositories"
+	"sync"
 	"time"
 
 	"github.com/goburrow/modbus"
-	logf "github.com/gofiber/fiber/v2/log"
+	"github.com/gofiber/fiber/v2/log"
 )
 
 type PowerMeterService struct {
-	client modbus.Client
-	// usageRepository  *repositories.ElectricityUsageRepository
+	client     modbus.Client
+	mu         *sync.Mutex
+	sharedData map[string]map[string]float32
+	reportRepo *repositories.ReportRepository
+	cfg        *config.Config
 }
 
-func NewPowerMeterService(cfg *config.Config) (*PowerMeterService, error) {
+func NewPowerMeterService(cfg *config.Config, reportRepo *repositories.ReportRepository) (*PowerMeterService, error) {
 	handler := modbus.NewRTUClientHandler(cfg.Devices.USB)
 	handler.BaudRate = cfg.Devices.BaudRate
 	handler.DataBits = cfg.Devices.DataBits
@@ -25,36 +31,84 @@ func NewPowerMeterService(cfg *config.Config) (*PowerMeterService, error) {
 	handler.Timeout = cfg.Devices.TimeOut * time.Second
 
 	if err := handler.Connect(); err != nil {
-		logf.Info("Error connecting:", err)
+		log.Info("Error connecting:", err)
 		return nil, err
 	}
 	defer handler.Close()
 
 	client := modbus.NewClient(handler)
 	return &PowerMeterService{
-		client: client,
-		// usageRepository: usageRepo,
+		client:     client,
+		mu:         &sync.Mutex{},
+		sharedData: make(map[string]map[string]float32),
+		reportRepo: reportRepo,
+		cfg:        cfg,
 	}, nil
 }
 
 func (p *PowerMeterService) ReadAndStorePowerData() { //(broadcastFunc func(data interface{})) {
 	for {
-
 		address := uint16(30001)
 		quantity := uint16(18) // Read all registers from 30001 to 30080 (40 registers)
 
 		results, err := p.client.ReadInputRegisters(address-30001, quantity)
 		if err != nil {
-			logf.Infof("Error reading registers: %v\n", err)
-			return
+			log.Infof("Error reading registers: %v\n", err)
+			time.Sleep(5 * time.Second)
+			continue
 		}
 
 		values := parseRegisters(results)
-		logf.Infof("Voltage: %f\n", math.Abs(float64(values[0])))
-		logf.Infof("Current: %f\n", math.Abs(float64(values[1])))
-		logf.Infof("Active power: %f\n", math.Abs(float64(values[2])))
 
-		time.Sleep(1 * time.Second)
+		p.mu.Lock()
+		p.sharedData[p.cfg.Devices.DEVICE01.DeviceId] = map[string]float32{
+			"voltage":      float32(math.Abs(float64(values[0]))),
+			"current":      float32(math.Abs(float64(values[1]))),
+			"active_power": float32(math.Abs(float64(values[2]))),
+		}
+		p.mu.Unlock()
+
+		time.Sleep(p.cfg.Devices.LoopReadTime * time.Second)
+	}
+}
+
+func (p *PowerMeterService) Broadcast() {
+	for {
+		nextTick := time.Now().Truncate(p.cfg.Devices.LoopbroadcastTime * time.Second).Add(p.cfg.Devices.LoopbroadcastTime * time.Second)
+		time.Sleep(time.Until(nextTick))
+
+		p.mu.Lock()
+		data := p.sharedData
+		p.mu.Unlock()
+		log.Info("Goroutine 2: Read value: %f\n", data)
+	}
+}
+
+func (p *PowerMeterService) RecordData() {
+	for {
+		nextTick := time.Now().Truncate(p.cfg.Devices.LoopRecordTime * time.Second).Add(p.cfg.Devices.LoopRecordTime * time.Second)
+		time.Sleep(time.Until(nextTick))
+
+		p.mu.Lock()
+		data := p.sharedData
+		p.mu.Unlock()
+
+		device01, err := data[p.cfg.Devices.DEVICE01.DeviceId]
+		if !err {
+			log.Infof("Device %s not found in shared data\n", p.cfg.Devices.DEVICE01.DeviceId)
+			continue
+		}
+
+		log.Info("Goroutine 3: Read value: %f\n", device01)
+		record := &models.RecodePowermeter{
+			DeviceID: p.cfg.Devices.DEVICE01.DeviceId,
+			Volt:     device01["voltage"],
+			Ampere:   device01["current"],
+			Watt:     device01["active_power"],
+		}
+		if err := p.reportRepo.RecordPowermeter(record); err != nil {
+			log.Infof("Error recording power meter data: %v\n", err)
+		}
 	}
 }
 

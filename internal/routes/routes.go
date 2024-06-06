@@ -10,47 +10,57 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
-	socketio "github.com/googollee/go-socket.io"
+
+	// socketio "github.com/googollee/go-socket.io"
 	"gorm.io/gorm"
 )
 
 func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
-	server := socketio.NewServer(nil)
+	// server := socketio.NewServer(nil)
 	authMiddleware := middleware.NewAuthMiddleware(cfg)
-
-	log.Info("Starting power meter service")
-	powerMeterService, err := services.NewPowerMeterService(cfg) //server,usageRepo)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Info("Reading and storing power data")
-	go powerMeterService.ReadAndStorePowerData()
 
 	// dependencies
 	log.Info("Setting up routes")
 	userRepo := repositories.NewUserRepository(db)
 	refreshTokenRepo := repositories.NewRefreshTokenRepository(db)
+	reportRepo := repositories.NewReportRepository(db)
 
 	userService := services.NewUserService(userRepo, refreshTokenRepo, cfg.JWTSecret, cfg.JWTExpiration, cfg.RefreshTokenExpiration, cfg)
+	reportService := services.NewReportService(reportRepo, cfg)
 
 	userHandler := handlers.NewUserHandler(userService, cfg)
+	reportHandler := handlers.NewReportHandler(reportService, cfg)
 
-	server.OnConnect("/", func(s socketio.Conn) error {
-		s.SetContext("")
-		log.Infof("connected:", s.ID())
-		return nil
-	})
+	// log.Info("Starting socket.io server")
+	// server.OnConnect("/", func(s socketio.Conn) error {
+	// 	s.SetContext("")
+	// 	log.Infof("connected:", s.ID())
+	// 	return nil
+	// })
 
-	server.OnError("/", func(s socketio.Conn, e error) {
-		log.Infof("meet error:", e)
-	})
+	// server.OnError("/", func(s socketio.Conn, e error) {
+	// 	log.Infof("meet error:", e)
+	// })
 
-	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
-		log.Infof("closed", reason)
-	})
-	go server.Serve()
-	defer server.Close()
+	// server.OnDisconnect("/", func(s socketio.Conn, reason string) {
+	// 	log.Infof("closed", reason)
+	// })
+	// go server.Serve()
+	// defer server.Close()
+
+	log.Info("Starting power meter service")
+	powerMeterService, err := services.NewPowerMeterService(cfg, reportRepo)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Info("Reading and storing power data")
+	// mu := &sync.Mutex{}
+	go powerMeterService.ReadAndStorePowerData()
+	go powerMeterService.Broadcast()
+	go powerMeterService.RecordData()
+
+	// Goroutine ที่ 2: อ่านค่าจาก sharedData ทุกๆ 2 วินาที
 
 	api := app.Group("/api")
 	// Authentication
@@ -60,10 +70,8 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	api.Get("/check-token", authMiddleware.Authenticate(), userHandler.CheckToken)
 	// api.Post("/register", userHandler.Register)
 
-	// // Electricity Bill
-	// data := api.Group("/data", authMiddleware.Authenticate(), authMiddleware.Permission([]models.Role{models.USER, models.ADMIN}))
-	// data.Get("/power-meter", userHandler.GetPowerMeter)
-	// data.Get("/electricity-bill", userHandler.GetElectricityBill)
+	// Report
+	api.Post("/report", reportHandler.GetReport)
 
 	// Admin
 	admin := api.Group("/admin", authMiddleware.Authenticate(), authMiddleware.Permission([]models.Role{models.ADMIN}))
