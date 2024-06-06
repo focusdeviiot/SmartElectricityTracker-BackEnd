@@ -2,7 +2,6 @@ package services
 
 import (
 	"encoding/binary"
-	"encoding/json"
 	"math"
 	"smart_electricity_tracker_backend/internal/config"
 	"smart_electricity_tracker_backend/internal/external"
@@ -70,6 +69,16 @@ func (p *PowerMeterService) ReadAndStorePowerData() { //(broadcastFunc func(data
 			"current":      float32(math.Abs(float64(values[1]))),
 			"active_power": float32(math.Abs(float64(values[2]))),
 		}
+		p.sharedData[p.cfg.Devices.DEVICE02.DeviceId] = map[string]float32{
+			"voltage":      float32(math.Abs(float64(values[0] + 1))),
+			"current":      float32(math.Abs(float64(values[1] + 1))),
+			"active_power": float32(math.Abs(float64(values[2] + 1))),
+		}
+		p.sharedData[p.cfg.Devices.DEVICE03.DeviceId] = map[string]float32{
+			"voltage":      float32(math.Abs(float64(values[0] + 2))),
+			"current":      float32(math.Abs(float64(values[1] + 2))),
+			"active_power": float32(math.Abs(float64(values[2] + 2))),
+		}
 		p.mu.Unlock()
 
 		time.Sleep(p.cfg.Devices.LoopReadTime * time.Second)
@@ -86,13 +95,7 @@ func (p *PowerMeterService) Broadcast() {
 		p.mu.Unlock()
 		log.Infof("Broadcasting data: %v\n", data)
 
-		jsonData, err := json.Marshal(data)
-		if err != nil {
-			log.Errorf("Error marshaling data: %v\n", err)
-			continue
-		}
-
-		p.ws.Broadcast(jsonData)
+		p.ws.Broadcast(data)
 	}
 }
 
@@ -111,12 +114,44 @@ func (p *PowerMeterService) RecordData() {
 			continue
 		}
 
+		device02, err := data[p.cfg.Devices.DEVICE02.DeviceId]
+		if !err {
+			log.Infof("Device %s not found in shared data\n", p.cfg.Devices.DEVICE02.DeviceId)
+			continue
+		}
+
+		device03, err := data[p.cfg.Devices.DEVICE03.DeviceId]
+		if !err {
+			log.Infof("Device %s not found in shared data\n", p.cfg.Devices.DEVICE03.DeviceId)
+			continue
+		}
+
 		log.Info("Goroutine 3: Read value: %f\n", device01)
 		record := &models.RecodePowermeter{
 			DeviceID: p.cfg.Devices.DEVICE01.DeviceId,
 			Volt:     device01["voltage"],
 			Ampere:   device01["current"],
 			Watt:     device01["active_power"],
+		}
+		if err := p.reportRepo.RecordPowermeter(record); err != nil {
+			log.Infof("Error recording power meter data: %v\n", err)
+		}
+
+		record = &models.RecodePowermeter{
+			DeviceID: p.cfg.Devices.DEVICE02.DeviceId,
+			Volt:     device02["voltage"],
+			Ampere:   device02["current"],
+			Watt:     device02["active_power"],
+		}
+		if err := p.reportRepo.RecordPowermeter(record); err != nil {
+			log.Infof("Error recording power meter data: %v\n", err)
+		}
+
+		record = &models.RecodePowermeter{
+			DeviceID: p.cfg.Devices.DEVICE03.DeviceId,
+			Volt:     device03["voltage"],
+			Ampere:   device03["current"],
+			Watt:     device03["active_power"],
 		}
 		if err := p.reportRepo.RecordPowermeter(record); err != nil {
 			log.Infof("Error recording power meter data: %v\n", err)

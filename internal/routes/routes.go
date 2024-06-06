@@ -11,6 +11,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
+	"github.com/gofiber/websocket/v2"
 
 	"gorm.io/gorm"
 )
@@ -30,13 +31,14 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	userHandler := handlers.NewUserHandler(userService, cfg)
 	reportHandler := handlers.NewReportHandler(reportService, cfg)
 
-	wsHandler := external.NewWebSocketHandler()
+	wsHandler := external.NewWebSocketHandler(userRepo, cfg)
 
 	log.Info("Starting power meter service")
 	powerMeterService, err := services.NewPowerMeterService(cfg, reportRepo, wsHandler)
 	if err != nil {
 		log.Fatal(err)
 	}
+	go wsHandler.Start()
 
 	log.Info("Reading and storing power data")
 	// mu := &sync.Mutex{}
@@ -69,4 +71,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	admin.Post("/users-count-device", userHandler.GetAllUsersCountDevice)
 	admin.Get("/users-device", userHandler.GetUserDeviceById)
 	admin.Put("/users-device", userHandler.UpdateUserDevice)
+
+	// WebSocket endpoint
+	app.Get("/ws", websocket.New(wsHandler.HandleWebSocket))
 }
