@@ -3,7 +3,6 @@ package external
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"smart_electricity_tracker_backend/internal/config"
 	"smart_electricity_tracker_backend/internal/models"
 	"smart_electricity_tracker_backend/internal/repositories"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
 )
@@ -40,14 +40,14 @@ func NewWebSocketHandler(userRepo *repositories.UserRepository, cfg *config.Conf
 func (w *WebSocketHandler) HandleWebSocket(c *websocket.Conn) {
 	token := c.Query("token")
 	if token == "" {
-		log.Println("Token not provided")
+		log.Info("Token not provided")
 		c.Close()
 		return
 	}
 
 	claims, err := w.ValidateToken(token)
 	if err != nil {
-		log.Println("Invalid token:", err)
+		log.Info("Invalid token:", err)
 		c.Close()
 		return
 	}
@@ -71,7 +71,7 @@ func (w *WebSocketHandler) HandleWebSocket(c *websocket.Conn) {
 	for {
 		_, _, err := c.ReadMessage()
 		if err != nil {
-			log.Println("Error reading message:", err)
+			log.Info("Error reading message:", err)
 			break
 		}
 	}
@@ -88,13 +88,13 @@ func (w *WebSocketHandler) Start() {
 			}
 			jsonData, err := json.Marshal(data)
 			if err != nil {
-				log.Println("Error marshaling data:", err)
+				log.Info("Error marshaling data:", err)
 				continue
 			}
 
 			err = client.conn.WriteMessage(websocket.TextMessage, jsonData)
 			if err != nil {
-				log.Println("Error writing message:", err)
+				log.Info("Error writing message:", err)
 				client.conn.Close()
 				delete(w.clients, client.conn)
 			}
@@ -111,13 +111,13 @@ func (w *WebSocketHandler) Broadcast(data map[string]map[string]float32) {
 func (w *WebSocketHandler) filterDataForDevices(data map[string]map[string]float32, user_id string) map[string]map[string]float32 {
 	userId, err := uuid.Parse(user_id)
 	if err != nil {
-		log.Println("Error parsing user_id:", err)
+		log.Info("Error parsing user_id:", err)
 		return nil
 	}
 
 	userDevice, err := w.userRepo.FindUserDeviceById(userId)
 	if err != nil {
-		log.Println("Error finding user device:", err)
+		log.Info("Error finding user device:", err)
 		return nil
 	}
 

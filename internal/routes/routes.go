@@ -41,7 +41,6 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	go wsHandler.Start()
 
 	log.Info("Reading and storing power data")
-	// mu := &sync.Mutex{}
 	go powerMeterService.ReadAndStorePowerData()
 	go powerMeterService.Broadcast()
 	go powerMeterService.RecordData()
@@ -53,7 +52,6 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	api.Post("/logout", userHandler.Logout)
 	api.Post("/refresh-Token", userHandler.RefreshToken)
 	api.Get("/check-token", authMiddleware.Authenticate(), userHandler.CheckToken)
-	// api.Post("/register", userHandler.Register)
 
 	// Report
 	api.Post("/report", reportHandler.GetReport)
@@ -61,13 +59,10 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	// Admin
 	admin := api.Group("/admin", authMiddleware.Authenticate(), authMiddleware.Permission([]models.Role{models.ADMIN}))
 	admin.Get("/users", userHandler.GetUsers)
-
 	admin.Get("/user", userHandler.GetUser)
 	admin.Post("/user", userHandler.Register)
 	admin.Put("/user", userHandler.UpdateUser)
 	admin.Delete("/user", userHandler.DeleteUser)
-	// admin.Get("/user/:username", userHandler.GetUserByUsername)
-
 	admin.Post("/users-count-device", userHandler.GetAllUsersCountDevice)
 	admin.Get("/users-device", userHandler.GetUserDeviceById)
 	admin.Put("/users-device", userHandler.UpdateUserDevice)
