@@ -24,12 +24,15 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	userRepo := repositories.NewUserRepository(db)
 	refreshTokenRepo := repositories.NewRefreshTokenRepository(db)
 	reportRepo := repositories.NewReportRepository(db)
+	deviceRepo := repositories.NewDeviceRepository(db)
 
 	userService := services.NewUserService(userRepo, refreshTokenRepo, cfg.JWTSecret, cfg.JWTExpiration, cfg.RefreshTokenExpiration, cfg)
 	reportService := services.NewReportService(reportRepo, cfg)
+	deivceService := services.NewMasterDeviceService(deviceRepo)
 
 	userHandler := handlers.NewUserHandler(userService, cfg)
 	reportHandler := handlers.NewReportHandler(reportService, cfg)
+	deviceHandler := handlers.NewDeviceHandler(deivceService, userService, cfg)
 
 	wsHandler := external.NewWebSocketHandler(userRepo, cfg)
 
@@ -53,8 +56,14 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	api.Post("/refresh-Token", userHandler.RefreshToken)
 	api.Get("/check-token", authMiddleware.Authenticate(), userHandler.CheckToken)
 
+	// Optional
+	api.Get("/devices", authMiddleware.Authenticate(), deviceHandler.GetDevice)
+	api.Get("/devices-byuser", authMiddleware.Authenticate(), deviceHandler.GetDeviceByUserId)
+
 	// Report
-	api.Post("/report", reportHandler.GetReport)
+	api.Post("/reports_volt", authMiddleware.Authenticate(), reportHandler.GetReportVolt)
+	api.Post("/reports_ampere", authMiddleware.Authenticate(), reportHandler.GetReportAmpere)
+	api.Post("/reports_watt", authMiddleware.Authenticate(), reportHandler.GetReportWatt)
 
 	// Admin
 	admin := api.Group("/admin", authMiddleware.Authenticate(), authMiddleware.Permission([]models.Role{models.ADMIN}))

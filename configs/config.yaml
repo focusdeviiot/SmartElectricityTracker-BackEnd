@@ -22,9 +22,9 @@ Devices:
   LoopReadTime: 1
   LoopbroadcastTime: 2
   LoopRecordTime: 5
-  DEVICE01:  # ถ้าเปลี่ยนการตั้งค่า Device เช่น DeviceId, Name ให้ลบ device_masters ก่อน start server
+  DEVICE01:  # ถ้าเปลี่ยนการตั้งค่า Device เช่น DeviceId, Name ให้ลบ device_masters ก่อน start server 
     SlaveId: 227
-    DeviceId: "DEVICE-01"
+    DeviceId: "DEVICE-01" # แนะนำไม่ให้เปลี่ยน DeviceId หากเปลี่ยนจะทำให้ข้อมูลเก่าไม่สามารถใช้งานได้ และ FrontBack จะต้องเปลี่ยนด้วย
     Name: "Device 01"
   DEVICE02: 
     SlaveId: 1

@@ -92,7 +92,7 @@ func (p *PowerMeterService) Broadcast() {
 		p.mu.Lock()
 		data := p.sharedData
 		p.mu.Unlock()
-		log.Infof("Broadcasting data: %v\n", data)
+		// log.Infof("Broadcasting data: %v\n", data)
 
 		p.ws.Broadcast(data)
 	}
@@ -125,7 +125,6 @@ func (p *PowerMeterService) RecordData() {
 			continue
 		}
 
-		log.Info("Goroutine 3: Read value: %f\n", device01)
 		record := &models.RecodePowermeter{
 			DeviceID: p.cfg.Devices.DEVICE01.DeviceId,
 			Volt:     device01["voltage"],
