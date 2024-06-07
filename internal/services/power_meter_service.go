@@ -16,7 +16,7 @@ import (
 
 type PowerMeterService struct {
 	client     modbus.Client
-	mu         *sync.Mutex
+	mu         sync.Mutex
 	sharedData map[string]map[string]float32
 	reportRepo *repositories.ReportRepository
 	ws         *external.WebSocketHandler
@@ -41,7 +41,6 @@ func NewPowerMeterService(cfg *config.Config, reportRepo *repositories.ReportRep
 	client := modbus.NewClient(handler)
 	return &PowerMeterService{
 		client:     client,
-		mu:         &sync.Mutex{},
 		sharedData: make(map[string]map[string]float32),
 		reportRepo: reportRepo,
 		ws:         ws,
@@ -93,7 +92,7 @@ func (p *PowerMeterService) Broadcast() {
 		p.mu.Lock()
 		data := p.sharedData
 		p.mu.Unlock()
-		log.Infof("Broadcasting data: %v\n", data)
+		// log.Infof("Broadcasting data: %v\n", data)
 
 		p.ws.Broadcast(data)
 	}
@@ -126,7 +125,6 @@ func (p *PowerMeterService) RecordData() {
 			continue
 		}
 
-		log.Info("Goroutine 3: Read value: %f\n", device01)
 		record := &models.RecodePowermeter{
 			DeviceID: p.cfg.Devices.DEVICE01.DeviceId,
 			Volt:     device01["voltage"],

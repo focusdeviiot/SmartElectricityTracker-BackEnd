@@ -93,15 +93,17 @@ func (r *UserRepository) FindAllUsersCountDevice(req *models.SearchUserCountDevi
 	query := baseQuery.Select("distinct u.id as user_id, u.username, u.name, u.role, ud1.count as device_count")
 	query = query.Order("u.username ASC, u.name ASC, u.role ASC")
 
-	pageable.PageNumber = int(req.Pageable.PageNumber)
-	pageable.PageSize = int(req.Pageable.PageSize)
-	pageable.TotalElements = totalElements
+	if req.Pageable != nil {
+		pageable.PageNumber = int(req.Pageable.PageNumber)
+		pageable.PageSize = int(req.Pageable.PageSize)
+		pageable.TotalElements = totalElements
 
-	if req.Pageable.PageSize > 0 {
-		pageable.TotalPages = int((totalElements + int64(req.Pageable.PageSize) - 1) / int64(req.Pageable.PageSize))
-		query = query.Offset(int((req.Pageable.PageNumber - 1) * req.Pageable.PageSize)).Limit(int(req.Pageable.PageSize))
-	} else {
-		pageable.TotalPages = 1
+		if req.Pageable.PageSize > 0 {
+			pageable.TotalPages = int((totalElements + int64(req.Pageable.PageSize) - 1) / int64(req.Pageable.PageSize))
+			query = query.Offset(int((req.Pageable.PageNumber - 1) * req.Pageable.PageSize)).Limit(int(req.Pageable.PageSize))
+		} else {
+			pageable.TotalPages = 1
+		}
 	}
 
 	if err := query.Scan(&users).Error; err != nil {
