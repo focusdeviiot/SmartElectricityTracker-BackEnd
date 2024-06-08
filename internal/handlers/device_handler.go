@@ -28,9 +28,11 @@ func (h *DeviceHandler) GetDevice(c *fiber.Ctx) error {
 		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get devices")
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"devices": devices,
-	})
+	return helpers.SuccessResponse(c,
+		fiber.StatusOK,
+		"Get devices successful",
+		devices,
+	)
 }
 
 func (h *DeviceHandler) GetDeviceByUserId(c *fiber.Ctx) error {
