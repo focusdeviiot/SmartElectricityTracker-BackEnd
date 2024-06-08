@@ -2,7 +2,6 @@ package services
 
 import (
 	"smart_electricity_tracker_backend/internal/config"
-	"smart_electricity_tracker_backend/internal/helpers"
 	"smart_electricity_tracker_backend/internal/models"
 	"smart_electricity_tracker_backend/internal/repositories"
 	"time"
@@ -20,7 +19,7 @@ func NewReportService(reportRepo *repositories.ReportRepository, cfg *config.Con
 	}
 }
 
-func (s *ReportService) GetReportByDeviceAndDate(device_id *string, dateFrom *string, dateTo *string, typeReport helpers.ReportType) ([]models.ReportRes, error) {
+func (s *ReportService) GetReportByDeviceAndDate(device_id *string, dateFrom *string, dateTo *string) ([]models.ReportRes, error) {
 	dateFromSet, err := time.Parse(time.RFC3339, *dateFrom)
 	if err != nil {
 		return nil, err
@@ -29,5 +28,5 @@ func (s *ReportService) GetReportByDeviceAndDate(device_id *string, dateFrom *st
 	if err != nil {
 		return nil, err
 	}
-	return s.reportRepo.FindReportByDeviceAndDate(device_id, &dateFromSet, &dateToSet, typeReport)
+	return s.reportRepo.FindReportByDeviceAndDate(device_id, &dateFromSet, &dateToSet)
 }

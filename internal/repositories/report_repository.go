@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"smart_electricity_tracker_backend/internal/helpers"
 	"smart_electricity_tracker_backend/internal/models"
 	"time"
 
@@ -16,9 +15,10 @@ func NewReportRepository(db *gorm.DB) *ReportRepository {
 	return &ReportRepository{db: db}
 }
 
-func (r *ReportRepository) FindReportByDeviceAndDate(device_id *string, dateFrom *time.Time, dateTo *time.Time, typeReport helpers.ReportType) ([]models.ReportRes, error) {
+func (r *ReportRepository) FindReportByDeviceAndDate(device_id *string, dateFrom *time.Time, dateTo *time.Time) ([]models.ReportRes, error) {
 	var reports []models.ReportRes
 	query := r.db.Table("recode_powermeters as rp")
+	query = query.Order("rp.created_at")
 	if device_id != nil && *device_id != "" {
 		query = query.Where("rp.device_id = ?", device_id)
 	}
@@ -28,7 +28,7 @@ func (r *ReportRepository) FindReportByDeviceAndDate(device_id *string, dateFrom
 	if dateTo != nil {
 		query = query.Where("rp.created_at <= ?", dateTo)
 	}
-	if err := query.Select("rp.id, rp.device_id, ?, rp.created_at", typeReport).Scan(&reports).Error; err != nil {
+	if err := query.Select("rp.id, rp.device_id, rp.volt, rp.ampere, rp.watt, rp.created_at").Scan(&reports).Error; err != nil {
 		return nil, err
 	}
 
