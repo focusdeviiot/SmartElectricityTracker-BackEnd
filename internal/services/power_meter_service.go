@@ -24,7 +24,7 @@ type PowerMeterService struct {
 }
 
 func NewPowerMeterService(cfg *config.Config, reportRepo *repositories.ReportRepository, ws *external.WebSocketHandler) (*PowerMeterService, error) {
-	handler := modbus.NewRTUClientHandler(cfg.Devices.USB)
+	handler := modbus.NewRTUClientHandler(cfg.PowerMeter.Device)
 	handler.BaudRate = cfg.Devices.BaudRate
 	handler.DataBits = cfg.Devices.DataBits
 	handler.Parity = cfg.Devices.Parity

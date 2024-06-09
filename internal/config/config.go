@@ -85,5 +85,7 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 
+	log.Info("Config loaded successfully", config)
+
 	return &config, nil
 }
