@@ -30,7 +30,7 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 
 # Copy the Go binary from the build stage
-COPY --from=build /app/configs .
+COPY --from=build /app/configs/config.yaml .
 COPY --from=build /app/backend .
 
 # Expose port 8080

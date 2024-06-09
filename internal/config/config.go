@@ -1,8 +1,10 @@
 package config
 
 import (
+	"os"
 	"time"
 
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/spf13/viper"
 )
 
@@ -54,9 +56,13 @@ type Config struct {
 }
 
 func LoadConfig() (*Config, error) {
-	viper.SetConfigName("config")
+	configFile := os.Getenv("CONFIG_FILE")
+	if configFile == "" {
+		log.Info("CONFIG_FILE environment variable is not set")
+	}
+
+	viper.SetConfigFile(configFile)
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath("../../configs")
 
 	// อ่านค่าจาก environment variables
 	viper.AutomaticEnv()

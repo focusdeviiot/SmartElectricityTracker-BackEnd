@@ -17,6 +17,7 @@
                 "DB_PASSWORD": "kmutnb@Eng",
                 "DB_NAME": "smart_electricity_tracker",
                 "JWT_SECRET": "kmutnb@Eng",
+                "CONFIG_FILE": "${workspaceFolder}/configs/config.yaml",
                 "POWER_METER_DEVICE": "/dev/ttyUSB0"
             }
         },
