@@ -23,8 +23,12 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o backend ./cmd/sm
 # Use a minimal base image for the final image
 FROM --platform=$TARGETPLATFORM alpine:3.20.0
 
-# Install required packages
-RUN apk --no-cache add ca-certificates
+# Install required packages including tzdata
+RUN apk --no-cache add ca-certificates tzdata
+
+# Set the timezone
+ENV TZ=Asia/Bangkok
+RUN ln -sf /usr/share/zoneinfo/Asia/Bangkok /etc/localtime && echo "Asia/Bangkok" > /etc/timezone
 
 # Set the working directory
 WORKDIR /root/
