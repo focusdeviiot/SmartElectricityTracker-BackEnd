@@ -14,7 +14,7 @@ AdminUser:
 
 Devices:
   USB: COM7 # /dev/ttyUSB0
-  BaudRate: 9600 # 2400
+  BaudRate: 4800 # 2400
   DataBits: 8
   StopBits: 1
   Parity: "N"
@@ -23,7 +23,7 @@ Devices:
   LoopbroadcastTime: 2
   LoopRecordTime: 5
   DEVICE01:  # ถ้าเปลี่ยนการตั้งค่า Device เช่น DeviceId, Name ให้ลบ device_masters ก่อน start server 
-    SlaveId: 227
+    SlaveId: 3
     DeviceId: "DEVICE-01"
     Name: "Device 01"
   DEVICE02: 

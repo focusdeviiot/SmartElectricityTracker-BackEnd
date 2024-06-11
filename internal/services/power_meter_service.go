@@ -16,6 +16,7 @@ import (
 
 type PowerMeterService struct {
 	client     modbus.Client
+	handler    *modbus.RTUClientHandler
 	mu         sync.Mutex
 	sharedData map[string]map[string]float32
 	reportRepo *repositories.ReportRepository
@@ -39,8 +40,10 @@ func NewPowerMeterService(cfg *config.Config, reportRepo *repositories.ReportRep
 	defer handler.Close()
 
 	client := modbus.NewClient(handler)
+
 	return &PowerMeterService{
 		client:     client,
+		handler:    handler,
 		sharedData: make(map[string]map[string]float32),
 		reportRepo: reportRepo,
 		ws:         ws,
@@ -53,30 +56,53 @@ func (p *PowerMeterService) ReadAndStorePowerData() { //(broadcastFunc func(data
 		address := uint16(30001)
 		quantity := uint16(18) // Read all registers from 30001 to 30080 (40 registers)
 
-		results, err := p.client.ReadInputRegisters(address-30001, quantity)
+		p.handler.SlaveId = byte(p.cfg.Devices.DEVICE01.SlaveId)
+		results1, err := p.client.ReadInputRegisters(address-30001, quantity)
 		if err != nil {
-			log.Infof("Error reading registers: %v\n", err)
+			log.Infof("Error reading registers 1: %v\n", err)
 			time.Sleep(5 * time.Second)
 			continue
 		}
+		values1 := parseRegisters(results1)
+		// log.Infof("Values 1: %v\n", values1)
 
-		values := parseRegisters(results)
+		time.Sleep(100 * time.Millisecond)
+		p.handler.SlaveId = byte(p.cfg.Devices.DEVICE02.SlaveId)
+		results2, err := p.client.ReadInputRegisters(address-30001, quantity)
+		if err != nil {
+			log.Infof("Error reading registers 2: %v\n", err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		values2 := parseRegisters(results2)
+		// log.Infof("Values 2: %v\n", values2)
+
+		time.Sleep(100 * time.Millisecond)
+		p.handler.SlaveId = byte(p.cfg.Devices.DEVICE03.SlaveId)
+		results3, err := p.client.ReadInputRegisters(address-30001, quantity)
+		if err != nil {
+			log.Infof("Error reading registers 3: %v\n", err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		values3 := parseRegisters(results3)
+		// log.Infof("Values 3: %v\n", values3)
 
 		p.mu.Lock()
 		p.sharedData[p.cfg.Devices.DEVICE01.DeviceId] = map[string]float32{
-			"voltage":      float32(math.Abs(float64(values[0]))),
-			"current":      float32(math.Abs(float64(values[1]))),
-			"active_power": float32(math.Abs(float64(values[2]))),
+			"voltage":      float32(math.Abs(float64(values1[0]))),
+			"current":      float32(math.Abs(float64(values1[1]))),
+			"active_power": float32(math.Abs(float64(values1[2]))),
 		}
 		p.sharedData[p.cfg.Devices.DEVICE02.DeviceId] = map[string]float32{
-			"voltage":      float32(math.Abs(float64(values[0] + 1))),
-			"current":      float32(math.Abs(float64(values[1] + 1))),
-			"active_power": float32(math.Abs(float64(values[2] + 1))),
+			"voltage":      float32(math.Abs(float64(values2[0]))),
+			"current":      float32(math.Abs(float64(values2[1]))),
+			"active_power": float32(math.Abs(float64(values2[2]))),
 		}
 		p.sharedData[p.cfg.Devices.DEVICE03.DeviceId] = map[string]float32{
-			"voltage":      float32(math.Abs(float64(values[0] + 2))),
-			"current":      float32(math.Abs(float64(values[1] + 2))),
-			"active_power": float32(math.Abs(float64(values[2] + 2))),
+			"voltage":      float32(math.Abs(float64(values3[0]))),
+			"current":      float32(math.Abs(float64(values3[1]))),
+			"active_power": float32(math.Abs(float64(values3[2]))),
 		}
 		p.mu.Unlock()
 
