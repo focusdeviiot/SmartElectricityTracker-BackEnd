@@ -33,6 +33,10 @@ func (h *ReportHandler) GetReportVolt(c *fiber.Ctx) error {
 		return helpers.ErrorResponse(c, fiber.StatusInternalServerError, "Cannot get report")
 	}
 
+	if len(reports) == 0 {
+		return helpers.ErrorResponse(c, fiber.StatusBadRequest, "Data not found")
+	}
+
 	var volt struct {
 		DeviceID  string    `json:"device_id"`
 		Volt      []float32 `json:"volt"`
