@@ -33,8 +33,10 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	userHandler := handlers.NewUserHandler(userService, cfg)
 	reportHandler := handlers.NewReportHandler(reportService, cfg)
 	deviceHandler := handlers.NewDeviceHandler(deivceService, userService, cfg)
+	syncTimeHandler := handlers.NewSyncTimeHandler(cfg)
 
 	wsHandler := external.NewWebSocketHandler(userRepo, cfg)
+	wsTimeHandler := handlers.NewWSTimeHandler()
 
 	log.Info("Starting power meter service")
 	powerMeterService, err := services.NewPowerMeterService(cfg, reportRepo, wsHandler)
@@ -47,6 +49,7 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	go powerMeterService.ReadAndStorePowerData()
 	go powerMeterService.Broadcast()
 	go powerMeterService.RecordData()
+	go wsTimeHandler.StartBroadcast()
 
 	log.Info("Setting up routes")
 	api := app.Group("/api")
@@ -76,6 +79,10 @@ func Setup(app *fiber.App, cfg *config.Config, db *gorm.DB) {
 	admin.Get("/users-device", userHandler.GetUserDeviceById)
 	admin.Put("/users-device", userHandler.UpdateUserDevice)
 
+	admin.Post("/sync-time", syncTimeHandler.SyncTime)
+
 	// WebSocket endpoint
-	app.Get("/ws", websocket.New(wsHandler.HandleWebSocket))
+	ws := app.Group("/ws")
+	ws.Get("/real-time", websocket.New(wsHandler.HandleWebSocket))
+	ws.Get("/time", websocket.New(wsTimeHandler.HandleWSTime))
 }
